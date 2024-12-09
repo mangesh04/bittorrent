@@ -9,133 +9,8 @@ from PIL import Image
 import io
 import pprint
 from functools import cmp_to_key
-
-
-class bencode_decoder:
-
-    def is_int(self,char):
-        return char>=ord('0') and char<=ord('9')
-
-    def btoi(self,tstr,i=0):
-        dint=b""
-        i+=1
-        while chr(tstr[i])!='e':
-            dint+=chr(tstr[i]).encode("utf-8")
-            i+=1
-        return (int(dint),i)
-
-
-    def btos(self,tstr,i=0):
-        slen=""
-        while self.is_int(tstr[i]):
-            slen+=chr(tstr[i])
-            i+=1
-        i+=1
-        dstr=""
-        j=i+int(slen)
-        return (tstr[i:j],j-1)
-
-
-    def btol(self,tstr,i=0):
-        if chr(tstr[i+1])=='e':
-            return ([],i+1)
-        temp,i=self.decode_helper(tstr,i+1)
-        nel=[temp]
-        temp2,i=self.btol(tstr,i)
-        nel+=temp2
-        return (nel,i)
-
-
-    def btod(self,tstr,i=0):
-        if chr(tstr[i+1])=='e':
-            return ({},i+1)
-
-        nel1,i=self.decode_helper(tstr,i+1)
-        nel2,i=self.decode_helper(tstr,i+1)
-        bdict={nel1:nel2}
-        temp,i=self.btod(tstr,i)
-        bdict.update(temp)
-        return (bdict,i)
-
-    def decode_helper(self,tstr,i=0):
-        #i (int): The current index (pointer) in the byte string `data` where decoding begins.
-
-        if self.is_int(tstr[i]):
-            return self.btos(tstr,i)
-
-        fc=chr(tstr[i])
-
-        if fc=='i':
-            return self.btoi(tstr,i)
-
-        if fc=='l':
-            return self.btol(tstr,i)
-
-        if fc=='d':
-            return self.btod(tstr,i)
-
-
-    def escape(self,i):
-        if (i>=ord('0') and i<=ord('9')) or (i>=ord('a') and i<=ord ('z')) or (i>=ord('A') and i<=ord('Z')) or i==ord('-') or    i==ord('_') or i==ord('.')or i==ord('~'):
-            return chr(i)
-
-        if i<=15:
-            return hex(i).replace("0x","%0").upper()
-
-        return hex(i).replace("0x","%").upper()
-
-    def escaped_hash(self,hash):
-        info_hash=""
-        for i in hash:
-            info_hash+=self.escape(i)
-        return info_hash
-
-    def print_in_format(self,ele,i=0):
-
-        pprint.pprint(ele)
-        # if isinstance(ele,dict):
-        #     for key in ele:
-        #         print(i*" ",key,":")
-        #         self.print_in_format(ele[key],i+1)
-
-        # if isinstance(ele,list):
-        #     for val in ele:
-        #         self.print_in_format(val,i+1)
-
-        # if isinstance(ele,bytes):
-        #     print(i*" ",ele)
-
-        # if isinstance(ele,int):
-        #     print(i*" ",ele)
-
-
-
-    def decode(self,torrent_string):
-        return self.decode_helper(torrent_string)[0]
-
-    def decode_file(self,file):
-        with open(file,'rb') as f:
-            return self.decode(f.read())
-
-    def encode(self,data):
-
-        if type(data)==int:
-            return f"i{data}e".encode()
-
-        if type(data)==bytes:
-            return f"{len(data)}:".encode()+data
-
-        if type(data)==list:
-            return b"l"+b"".join([self.encode(i) for i in data])+b"e"
-
-        if type(data)==dict:
-            bdict = b"d"
-            for key in data:
-                bdict+=self.encode(key)
-                bdict+=self.encode(data[key])
-            bdict+=b"e"
-            return bdict
-
+from bitarray import bitarray
+import bencode_decoder
 
 
 
@@ -144,43 +19,30 @@ class bencode_decoder:
 
 class torrent_client_side:
 
-
-
-
     def __init__(self,torrent_file):
-        self.peers=[]
-        self.url_para={'announce':'',
-        'info_hash':'',
-        'peer_id':'',
-        'uploaded':'',
-        'downloaded':'',
-        'left':'',
-        'port':'',
-        'compact':'',
-        'event':''}
-
-        self.message={'keep-alive':b'',
-        'choke':b'',
-        'unchoke':b'',
-        'interested':b'',
-        'not interested':b'',
-        'have':b'',
-        'bitfield':b'',
-        'request':b'',
-        'piece':b'',
-        'cancel':b'',
-        'port':b''
-        }
         self.bd=bencode_decoder()
         self.decoded_tf=self.bd.decode_file(torrent_file)
 
-        self.peers_schema={
-        "host":'',
-        "port":'',
-        "bitfild":'',
-        "uploaded":'',
-        }
-        self.peers=[]
+
+    def get_url(self,url_para):
+
+        url=f"{url_para['announce']}?info_hash={url_para['info_hash']}&peer_id={url_para['peer_id']}&uploaded={url_para['uploaded']}&downloaded={url_para['downloaded']}&left={url_para['left']}&port={url_para['port']}&compact={url_para['compact']}&event={url_para['event']}"
+
+        return url
+        
+    def get_url_parameters(self):
+        self.url_para['announce'] =self.decoded_tf[b"announce"].decode()
+        self.url_para['peer_id']=create_peer_id('-MT0001-')
+        self.info_hash=hashlib.sha1(bd.encode(self.decoded_tf[b"info"])).digest()
+        self.url_para['info_hash']=bd.escaped_hash(info_hash)
+        self.url_para['uploaded']=0
+        self.url_para['downloaded']=0
+        self.url_para['left']=file_size(self.decoded_tf)
+        self.url_para['port']=6889
+        self.url_para['compact']=1
+        self.url_para['event']='started'
+        return url_para
+
 
     def sort_peers():
         def compare(a,b):
@@ -190,6 +52,22 @@ class torrent_client_side:
                 return -1
 
         self.peers=sorted(peers,key=cmp_to_key(compare))
+
+    def request_message(index,begin,block):
+        request=struct.pack('!IB',13,6,index,begin,block)
+        return request
+
+    async def download_piece(reader,writer):
+        piece=bitarray()
+
+        request=request_message()
+        await writer.write(request)
+        new_data=await reader.read(chunk)
+        if not new_data:
+            break
+        peice.extend(new_data)
+
+
 
 
     async def handle_messages(reader,writer):
@@ -208,6 +86,7 @@ class torrent_client_side:
                 continue
 
             message_id= await reader.read(1)
+
 
             if message_id==2:#intrested
                 pass
@@ -260,11 +139,6 @@ class torrent_client_side:
     def create_peer_id(self,client_id):
         return f"{client_id}{''.join([str(random.randint(0,   9)) for _ in range(12)])}"
 
-    def get_url(self,url_para):
-
-        url=f"{url_para['announce']}?info_hash={url_para['info_hash']}&peer_id={url_para['peer_id']}&uploaded={url_para['uploaded']}&downloaded={url_para['downloaded']}&left={url_para['left']}&port={url_para['port']}&compact={url_para['compact']}&event={url_para['event']}"
-
-        return url
 
     def create_handshake(self,peer_id, info_hash):
         protocol_string = b"BitTorrent protocol"
@@ -289,18 +163,6 @@ class torrent_client_side:
         return handshake
 
 
-    def get_url_parameters(self):
-        self.url_para['announce'] =self.decoded_tf[b"announce"].decode()
-        self.url_para['peer_id']=create_peer_id('-MT0001-')
-        self.info_hash=hashlib.sha1(bd.encode(self.decoded_tf[b"info"])).digest()
-        self.url_para['info_hash']=bd.escaped_hash(info_hash)
-        self.url_para['uploaded']=0
-        self.url_para['downloaded']=0
-        self.url_para['left']=file_size(self.decoded_tf)
-        self.url_para['port']=6889
-        self.url_para['compact']=1
-        self.url_para['event']='started'
-        return url_para
 
     # async def tcp_client(self):
 

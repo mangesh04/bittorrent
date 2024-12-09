@@ -22,14 +22,29 @@ async def send_file(writer,file,chunk_size=16*1024):
     writer.close()
     await writer.wait_closed()
 
-def handles_messages(reader,writer):
-    if(have_pieces):
-        writer.write(bitfield)
+async def handle_messages(reader,writer):
     while True:
-        message_len=reader.read(4)
-        message_id=reader.read(1)
+        try:
+            message_length = await asynciowait_for (reader.read(4),300)
+            message_lenth=struct.unpack('!I',  message_lenth)
+        except asyncio.TimeoutError:
+            await aioconsole.aprint("time out  connection dropped with ")
+            writer.close()
+            break
+        if message_length == 0:
+            continue
+        message_id= await reader.read(1)
+        if message_id==2:#intrested
+            pass
+        if message_id==3:#not intrested
+            pass
+        if message_id==4:#have
+            pass
+        if message_id==6:#request
+            pass
+        if message_id==8:#cancel
+            pass
 
-    if message_id == 
 
 
 def check_handshake():
