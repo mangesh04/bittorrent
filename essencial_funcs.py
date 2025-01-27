@@ -124,3 +124,46 @@ class bencode_decoder:
                 bdict+=self.encode(data[key])
             bdict+=b"e"
             return bdict
+
+
+
+
+
+def create_handshake(peer_id, info_hash):
+    protocol_string = b"BitTorrent protocol"
+    pstrlen = len(protocol_string)
+    # Ensure the peer_id and info_hash are 20bytes long
+    if len(peer_id) != 20 or len(info_hash) !=20:
+        raise ValueError("peer_id and info_hashmust be 20 bytes long.")
+    # Create the reserved bytes (8 bytes)
+    reserved = b'\x00' * 8
+    # Construct the handshake message
+    handshake = (
+        struct.pack('B', pstrlen) +   # pstrlen(1 byte)
+        protocol_string +              # pstr(19 bytes)
+        reserved +                     #reserved (8 bytes)
+        info_hash +                  #info_hash (20 bytes)
+        peer_id                        #peer_id (20 bytes)
+    )
+    return handshake
+
+def create_peer_id(client_id):
+    return f"{client_id}{''.join([str(randomrandint(0,   9)) for _ in range(12)])}"
+
+
+def file_size():
+    left=0
+    if b"files" in decoded_tf[b"info"]:
+        sum=0
+        for i in decoded_tf[b"info"][b"files"]:
+            sum+=i[b"length"]
+        left=sum
+    else:
+        left=int(str(decoded_tf[b"info"][b"length"]).encode(),10)
+    return left
+
+
+bd=bencode_decoder()
+
+data=bd.decode_file("announce")
+bd.print_in_format(data)

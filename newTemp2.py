@@ -59,6 +59,14 @@ class torrent_client_side:
         url=f"{url_para['announce']}?info_hash={url_para['info_hash']}&peer_id{url_para    ['peer_id']}&uploaded{url_para ['uploaded']}&downloaded{url_para   ['downloaded']}&left{url_para['left']}&port={url_para['port']}&compact={url_para ['compact']}&event={url_para['event']}"
         return url
 
+    peice_count=[-1 for i in range(bitmap_length)]
+    rank_count=[]
+
+
+
+    def get_next_task(self):
+        pass
+
     def update_peers(self):
         print(self.get_url(self.url_para))
         announce_content=requests.get(self.get_url(self.url_para)).content
@@ -72,14 +80,6 @@ class torrent_client_side:
             pass
         return something
 
-    def sort_peers():
-        def compare(a,b):
-            if a['uploaded']<b['uploaded']:
-                return 1
-            else:
-                return -1
-
-        self.peers=sorted(peers,key=cmp_to_key(compare))
 
     def request_message(index,begin,block):
         request=struct.pack('!IB',13,6,index,begin,block)
@@ -127,12 +127,14 @@ class torrent_client_side:
 
             if message_id==8:#cancel
                 pass
+
     async def start_torrent_client(self):
         pass
         #send handshake
         #handshake=receive handshake
         #send bitmap
-        #receive bitmap
+        #thispeer.bitmap=receive bitmap
+        #update_peers()
         #handle messagees
 
 ubn1="ubuntu-24.04-desktop-amd64.iso.torrent"

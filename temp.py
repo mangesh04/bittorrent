@@ -2,32 +2,21 @@ import asyncio
 from bitarray import bitarray
 from functools import cmp_to_key
 
-
 peers={"peer1":{"bitmap":bitarray("110101010")},"peer2":{"bitmap":bitarray("110101010")},"peer3":{"bitmap":bitarray("010101111")}}
+
 bitmap_length=9
+peice_count=[1,1,2,3]
+rank_count=[0 for i in range(9)]
 
-def get_no_of_peers():
-    no_of_peers=[[i,0] for i in range(bitmap_length)]
-    for peer in peers:
-        for i in peers[peer]:
-            for j in range(len(peers[peer]["bitmap"])):
-                no_of_peers[j][1]+=peers[peer]["bitmap"][j]
-    return no_of_peers
+def update_rank_count():
+    for i in peice_count:
+        rank_count[i-1]+=1
 
-no_of_peers=get_no_of_peers()
-print(no_of_peers)
+    for i in range(bitmap_length-1):
+        rank_count[i+1]+=rank_count[i]
 
-def comparator(a,b):
-    if a[1]<b[1]:
-        return -1
-    if a[1]>b[1]:
-        return 1
-    else:
-        return 0
-
-sorted_peers_no=sorted(no_of_peers,key=cmp_to_key(comparator))
-
-print(sorted_peers_no)
+update_rank_count()
+print(rank_count)
 
 # def sort_peers(peers):
 #     sorted_peers=[]

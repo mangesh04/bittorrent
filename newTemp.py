@@ -29,7 +29,7 @@ class torrent_client_side:
         url=f"{url_para['announce']}?info_hash={url_para['info_hash']}&peer_id={url_para['peer_id']}&uploaded={url_para['uploaded']}&downloaded={url_para['downloaded']}&left={url_para['left']}&port={url_para['port']}&compact={url_para['compact']}&event={url_para['event']}"
 
         return url
-        
+
     def get_url_parameters(self):
         self.url_para['announce'] =self.decoded_tf[b"announce"].decode()
         self.url_para['peer_id']=create_peer_id('-MT0001-')
