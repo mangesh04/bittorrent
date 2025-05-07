@@ -1,5 +1,65 @@
 import asyncio
 
+
+
+
+
+
+
+peice_count=[-1 for i in range(bitmap_length)]#works as rarity rank
+rank_count=[0 for i in range(len(peers))]
+bd=bencode_decoder()
+decoded_tf=bd.decode_fil(torrent_file)
+peers={}
+bitmap_length=9
+downloaders_limit=3
+
+
+def update_piece_count(peer_id,update):
+    if type(update)==bytes:
+        for i in len(peers["peer_id"]["bitfield"]):
+            peice_count[i]+=peers["peer_id"]["bitfield"][i]
+
+    if type(update)==int:
+        peice_count[update
+        ]+=peers["peer_id"]["bitfield"][update]
+
+def update_rank_count():
+    #just temparary words
+    for i in peice_count:
+        rank_count[i-1]+=1
+
+
+def get_next_task(peer_id):
+    if rank_count[peers[peer_id]['rank']] <=downloaders_limit:
+        return 1 #send request message
+    else:
+        return 0 #send keep alive message
+
+def sort_peers():
+    def compare(a,b):
+        if a['uploaded']<b['uploaded']:
+            return 1
+        else:
+            return -1
+    peers=sorted(peers,key=cmp_to_ke(compare))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 url_para={}
 
 url_para['announce'] =decoded_t[b"announce"].decode()
@@ -14,6 +74,7 @@ url_para['compact']=1
 url_para['event']='started'
 
 message_queue=asyncio.Queue()
+cancel_queue=asyncio.Queue()
 
 
 
@@ -65,25 +126,42 @@ def request(url):
 async def receive_messages(reader):
     while True:
         try:
-            message_queue=await asynciowait_for (reader.read(4),300)
+            message=await asynciowait_for (reader.read(4),300)
+
+            if message == cancel_message:#todo just algo written
+                cancel_queue.put(message)
+            message_queue.put(message)
 
         except asyncio.TimeoutError:
+            message_queue.put(message_prefix["chock"])
             await aioconsole.aprint("time out  connection dropped with ")
             writer.close()
             break
 
-async def send_messages(writer):
+def manage_choking():
+    pass
+
+async def send_messages(writer,peer_id):
     while True:
+
+        if not cancel_queue.empty():
+            while not cancel_queue.empty():
+                cancel_message=cancel_queue.get()
+                for i in range(len(message_queue)):
+                    message=message_queue.get()
+                    if cancel_message!=message:#todo just logic and algo here
+                        message_queue.put(message)
+
         message= await message_queue.get()
         message_lenth=struct.unpack('!I',  message)
 
         if message_length == 0:#keep-alive
             continue
 
-        message_id= await reader.read(1)
+        message_id= await reader.read(1)#TODO now we dont read message from here so change the logic like above
 
         if message_id==0:#chokke
-            pass#TODO keep alive
+            writer.write(message_prefix["keep-alive"])
 
         if message_id==1 or message_id==7:#unchoke or piece
             message=get_request_message()
@@ -91,29 +169,33 @@ async def send_messages(writer):
                 writer.write(message)
 
         if message_id==2:#intrested
-            pass#TODO choke or unchoke
+            manage_choking()
 
         if message_id==3:#not intrested
-            pass#TODO it means they dont want anything
+            pass#it means they dont want anything , dont think we have to do anything here,but it does help to understand
 
         if message_id==4:#have
-            pass #TODO update the bitfield of this peer
+            index=struct.unpack("need to update this liene",message)
+            peers[peer_id][index]=1
+            #TODO update the bitfield of this peer,check the logic again
 
-        if message_id==6:#request
-            pass  #TODO send the peice
+        if message_id==6:#request /  <len=0013><id=6><index><begin><length>
+            piece_index=struct.unpack("....",message)
+            piece_offset=struct.unpack("....",message)
+            chunck_length=struct.unpack("",message)
+            #TODO send the peice,check logic and code again
 
-        if message_id==8:#cancel
-            pass #TODO disconnect the connnection
+async def handle_messages(reader,writer,peer_id,info_hash):
 
-async def handle_messages(reader,writer):
-    """
-    TODO send handshak
-    todo handshake=receive handshake
-    todo send bitmap
-    todo thispeer.bitmap=receive bitmap
-    todo update_peers()
-    todo handle messagees
-    """
+    writer.write(create_handshake(peer_id,info_hash))
+    handshake=reader.read("handshake size")
+
+    if not check_handshake(handshake):#todo have to create this function
+        writer.close()#todo something is missing here
+        return
+    writer.write(bitmap)
+    reader.read(bitmap_size)#todo give args properly
+    #todo update_peers()
     await asyncio.gather(receive_messages(reader,peer_id),send_messages(writer,peer_id))
 
 
@@ -141,4 +223,8 @@ async def start_torrent_client():
         await asyncio.sleep(30)  # Fetch new peers every 30 seconds
 
 
-asyncio.run(start_torrent_client())
+def run_client():
+    asyncio.run(start_torrent_client())
+
+#variables needed in above code are
+#info_hash, peer_id, writer ,reader,bitmap
